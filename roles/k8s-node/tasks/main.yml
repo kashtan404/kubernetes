@@ -1,0 +1,23 @@
+---
+
+- include: prepare.yml
+
+- include: kube-node.yml
+
+- include: get-certs.yml
+
+- include: configure-kubelet.yml
+
+- name: Start and enable service kubelet
+  service:
+    name: kubelet
+    state: started
+    enabled: yes
+
+- include: configure-proxy.yml
+
+- name: Start and enable service proxy
+  service:
+    name: kube-proxy
+    state: started
+    enabled: yes

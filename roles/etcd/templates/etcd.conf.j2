@@ -1,0 +1,51 @@
+{% macro initial_cluster() -%}
+{% for host in groups[k8s_hostgroup] -%}
+  {{ hostvars[host]['ansible_hostname'] }}=https://{{ hostvars[host].ansible_default_ipv4.address }}:{{ etcd_peer_port }}
+  {%- if not loop.last -%},{%- endif -%}
+{%- endfor -%}
+{% endmacro -%}
+
+{% if groups[k8s_hostgroup] and groups[k8s_hostgroup] | length > 0 %}
+ETCD_NAME={{ ansible_hostname }}
+{% else %}
+ETCD_NAME=default
+{% endif %}
+ETCD_DATA_DIR={{ etcd_data_dir }}
+#ETCD_SNAPSHOT_COUNTER="10000"
+#ETCD_HEARTBEAT_INTERVAL="100"
+#ETCD_ELECTION_TIMEOUT="1000"
+#ETCD_MAX_SNAPSHOTS="5"
+#ETCD_MAX_WALS="5"
+#ETCD_CORS=""
+
+{% if groups[k8s_hostgroup] and groups[k8s_hostgroup] | length > 0 %}
+#[cluster]
+ETCD_INITIAL_ADVERTISE_PEER_URLS=https://{{ etcd_machine_address }}:{{ etcd_peer_port }}
+ETCD_INITIAL_CLUSTER={{ initial_cluster() }}
+ETCD_INITIAL_CLUSTER_STATE={{ etcd_initial_cluster_state }}
+ETCD_INITIAL_CLUSTER_TOKEN={{ etcd_initial_cluster_token }}
+#ETCD_DISCOVERY=""
+#ETCD_DISCOVERY_SRV=""
+#ETCD_DISCOVERY_FALLBACK="proxy"
+#ETCD_DISCOVERY_PROXY=""
+{% endif %}
+
+ETCD_LISTEN_PEER_URLS=https://0.0.0.0:{{ etcd_peer_port }}
+
+ETCD_ADVERTISE_CLIENT_URLS=https://{{ etcd_machine_address }}:{{ etcd_client_port }}
+ETCD_LISTEN_CLIENT_URLS=https://0.0.0.0:{{ etcd_client_port }}
+
+#[proxy]
+ETCD_PROXY="off"
+
+#[security]
+ETCD_CA_FILE={{ etcd_certs_dir }}/ca.crt
+ETCD_TRUSTED_CA_FILE={{ etcd_certs_dir }}/ca.crt
+ETCD_CERT_FILE={{ etcd_certs_dir }}/server.crt
+ETCD_KEY_FILE={{ etcd_certs_dir }}/server.key
+ETCD_CLIENT_CERT_AUTH=true
+ETCD_PEER_CA_FILE={{ etcd_certs_dir }}/ca.crt
+ETCD_PEER_TRUSTED_CA_FILE={{ etcd_certs_dir }}/ca.crt
+ETCD_PEER_CERT_FILE={{ etcd_certs_dir }}/peer.crt
+ETCD_PEER_KEY_FILE={{ etcd_certs_dir }}/peer.key
+ETCD_PEER_CLIENT_CERT_AUTH=true

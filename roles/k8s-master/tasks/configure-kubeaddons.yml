@@ -1,0 +1,121 @@
+---
+
+- name: Assures addons dir exists
+  file:
+    path: "{{ kube_addons_dir }}"
+    state: directory
+
+- name: Install python libs
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - python-yaml
+    - python-passlib
+
+- name: Make sure the system services namespace exists
+  copy:
+    src: namespace.yaml
+    dest: "{{ kube_addons_dir }}/namespace.yaml"
+
+- name: Make sure regsecret exists
+  template:
+    src: registry-secret.yaml.j2
+    dest: "{{ kube_addons_dir }}/registry-secret.yaml"
+
+- name: Ingress | Assures /dns dir exists
+  file:
+    path: "{{ kube_addons_dir }}/ingress"
+    state: directory
+
+- name: Ingress | Generate basic-auth file
+  htpasswd:
+    path: "{{ kube_cert_dir }}/auth"
+    name: "{{ item }}"
+    password: "{{ item }}"
+  with_items:
+    - admin
+
+- name: Ingress | Slurp basic-auth file
+  slurp:
+    src: "{{ kube_cert_dir }}/auth"
+  register: kube_ingress_htpasswd_slurp
+  run_once: true
+
+- name: Ingress | Install Template from converted saltfiles
+  template:
+  args:
+    src: "ingress/{{ item }}.j2"
+    dest: "{{ kube_addons_dir }}/ingress/{{ item }}"
+    mode: 0644
+    owner: root
+    group: root
+  with_items:
+  - ingress-rc.yaml
+  - ingress-svc.yaml
+  - ingress-basic-auth.yaml
+
+- name: DNS | Assures /dns dir exists
+  file:
+    path: "{{ kube_addons_dir }}/dns"
+    state: directory
+
+- name: DNS | Install Template from converted saltfiles
+  template:
+  args:
+    src: "dns/{{ item }}.j2"
+    dest: "{{ kube_addons_dir }}/dns/{{ item }}"
+    mode: 0644
+    owner: root
+    group: root
+  with_items:
+  - kubedns-controller.yaml
+  - kubedns-svc.yaml
+
+- name: Monitoring | Assures /dns dir exists
+  file:
+    path: "{{ kube_addons_dir }}/cluster-monitoring"
+    state: directory
+
+- name: Monitoring | Install Template from converted saltfiles
+  template:
+  args:
+    src: "cluster-monitoring/{{ item }}.j2"
+    dest: "{{ kube_addons_dir }}/cluster-monitoring/{{ item }}"
+    mode: 0644
+    owner: root
+    group: root
+  with_items:
+  - influxdb-controller.yaml
+  - influxdb-service.yaml
+  - heapster-controller.yaml
+  - heapster-service.yaml
+  - grafana-controller.yaml
+  - grafana-service.yaml
+
+- name: Dashboard | Assures /dns dir exists
+  file:
+    path: "{{ kube_addons_dir }}/kube-dash"
+    state: directory
+
+- name: Dashboard | Install Template from converted saltfiles
+  template:
+  args:
+    src: "kube-dash/{{ item }}.j2"
+    dest: "{{ kube_addons_dir }}/kube-dash/{{ item }}"
+    mode: 0644
+    owner: root
+    group: root
+  with_items:
+  - kube-dash-rc.yaml
+  - kube-dash-svc.yaml
+
+- name: Get deploy_addons script
+  copy:
+    src: deploy_addons.sh
+    dest: "{{ kube_script_dir }}/deploy_addons.sh"
+    mode: 0755
+
+- name: Create addons
+  command: "{{ kube_script_dir }}/deploy_addons.sh {{ kube_addons_dir }}"
+  changed_when: false

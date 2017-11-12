@@ -1,0 +1,37 @@
+---
+
+- name: Write the config file for the api server
+  template:
+    src: apiserver.j2
+    dest: "{{ kube_config_dir }}/apiserver"
+  notify: restart daemons
+
+- name: Remove default config file from the api server
+  file:
+    path: "{{ kube_config_dir }}/config"
+    state: absent
+  notify: restart daemons
+
+- name: Make sure Kubernetes apiserver token dir exists
+  file:
+    state: directory
+    path: "{{ kube_token_dir }}"
+    mode: 0700
+    owner: kube
+    group: kube
+
+- name: Ensure that a token auth file exists (addons may populate it)
+  file:
+    path: "{{ kube_token_dir }}/known_tokens.csv"
+    state: touch
+    mode: 0700
+    owner: kube
+    group: kube
+  changed_when: false
+
+- name: Add cap_net_bind_service to kube-apiserver
+  capabilities:
+    path: /usr/bin/kube-apiserver
+    capability: cap_net_bind_service=ep
+    state: present
+  changed_when: false

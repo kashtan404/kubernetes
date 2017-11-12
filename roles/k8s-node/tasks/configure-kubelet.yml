@@ -1,0 +1,34 @@
+---
+
+- name: Write the config files for kubelet
+  template:
+    src: kubelet.j2
+    dest: "{{ kube_config_dir }}/kubelet"
+  notify: restart kubelet
+
+- name: Slurp kube CA certificate
+  slurp:
+    src: "{{ kube_cert_dir }}/ca.crt"
+  register: kube_ca_slurp
+  run_once: true
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+
+- name: Write the connection files for kubelet
+  template:
+    src: kubelet.kubeconfig.j2
+    dest: "{{ kube_config_dir }}/kubelet.kubeconfig"
+  notify: restart kubelet
+
+- name: Make sure kubelet manifests dir exists
+  file:
+   state: directory
+   path: "{{ kube_manifest_dir }}"
+   mode: 0700
+   owner: kube
+   group: kube
+
+- name: Remove default config file from the api server
+  file:
+    path: "{{ kube_config_dir }}/config"
+    state: absent
+  notify: restart kubelet

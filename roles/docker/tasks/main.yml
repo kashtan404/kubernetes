@@ -1,0 +1,13 @@
+---
+
+- include: prepare.yml
+
+- include: docker.yml
+  when: not container
+
+- name: Start docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  when: not container

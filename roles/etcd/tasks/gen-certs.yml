@@ -1,0 +1,84 @@
+---
+- name: Create etcd certs directory
+  file:
+    state: directory
+    path: "{{ etcd_certs_dir }}"
+    owner: etcd
+    group: root
+    mode: 0740
+
+- name: Set cert node ips
+  set_fact:
+    etcd_machine_address: "{{ etcd_machine_address }}"
+
+- name: Create etcd script directory
+  file:
+    path: "{{ etcd_script_dir }}"
+    state: directory
+    owner: root
+    group: root
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  run_once: true
+
+- name: Overwrite make-ca-cert.sh from local copy
+  copy:
+    src: make-ca-cert.sh
+    dest: "{{ etcd_script_dir }}"
+    mode: "0500"
+  changed_when: false
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+
+- name: Run create cert script on first etcd server
+  command:
+    "{{ etcd_script_dir }}/make-ca-cert.sh"
+  args:
+    creates: "{{ etcd_certs_dir }}/server.crt"
+  run_once: true
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  environment:
+    NODE_IPS: "{% for host in groups[k8s_hostgroup] %}{{ hostvars[host]['etcd_machine_address']  }}{% if not loop.last %},{% endif %}{% endfor %}"
+    NODE_DNS: "{{ groups[k8s_hostgroup]|join(',') }}"
+    CERT_DIR: "{{ etcd_certs_dir }}"
+    CERT_GROUP: "root"
+    HTTP_PROXY: "{{ http_proxy|default('') }}"
+    HTTPS_PROXY: "{{ https_proxy|default('') }}"
+
+- name: Slurp etcd certificates
+  slurp:
+    src: "{{ item }}"
+  register: certs
+  run_once: true
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  with_items:
+    - "{{ etcd_certs_dir }}/ca.crt"
+    - "{{ etcd_certs_dir }}/server.crt"
+    - "{{ etcd_certs_dir }}/server.key"
+    - "{{ etcd_certs_dir }}/ca.crt"
+    - "{{ etcd_certs_dir }}/peer.crt"
+    - "{{ etcd_certs_dir }}/peer.key"
+    - "{{ etcd_certs_dir }}/client.crt"
+    - "{{ etcd_certs_dir }}/client.key"
+
+- name: Write back the etcd certificates to etcd nodes
+  copy:
+    dest: "{{ item.item }}"
+    content: "{{ item.content|b64decode }}"
+  when: inventory_hostname != groups[k8s_hostgroup][0]
+  with_items:
+    - "{{ certs.results }}"
+
+- name: Verify certificate permissions
+  file:
+    path: "{{ item }}"
+    group: root
+    owner: etcd
+    mode: "0440"
+  with_items:
+    - "{{ etcd_certs_dir }}/ca.crt"
+    - "{{ etcd_certs_dir }}/server.crt"
+    - "{{ etcd_certs_dir }}/server.key"
+    - "{{ etcd_certs_dir }}/ca.crt"
+    - "{{ etcd_certs_dir }}/peer.crt"
+    - "{{ etcd_certs_dir }}/peer.key"
+    - "{{ etcd_certs_dir }}/client.crt"
+    - "{{ etcd_certs_dir }}/client.key"

@@ -1,0 +1,37 @@
+---
+
+- name: Make sure Kubernetes certs dir exists
+  file:
+   state: directory
+   path: "{{ kube_cert_dir }}"
+   mode: 0700
+   owner: kube
+   group: kube
+
+- name: Read back the api-server certificates
+  slurp:
+    src: "{{ item }}"
+  register: apiserver_certs
+  run_once: true
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  with_items:
+    - "{{ kube_cert_dir }}/server.crt"
+    - "{{ kube_cert_dir }}/server.key"
+    - "{{ kube_cert_dir }}/ca.crt"
+    - "{{ kube_cert_dir }}/ca.key"
+    - "{{ kube_cert_dir }}/kubecfg.crt"
+    - "{{ kube_cert_dir }}/kubecfg.key"
+    - "{{ kube_cert_dir }}/kubelet.crt"
+    - "{{ kube_cert_dir }}/kubelet.key"
+    - "{{ kube_cert_dir }}/apiserver-kubelet-client.crt"
+    - "{{ kube_cert_dir }}/apiserver-kubelet-client.key"
+
+- name: Write back the api-server certificates
+  copy:
+    dest: "{{ item.item }}"
+    content: "{{ item.content | b64decode }}"
+    group: kube
+    owner: kube
+    mode: 0700
+  with_items: "{{ apiserver_certs.results }}"
+  when: inventory_hostname != groups[k8s_hostgroup][0]

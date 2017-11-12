@@ -1,0 +1,25 @@
+[k8s:children]
+k8s_master
+k8s_minion
+
+[k8s_master:children]
+k8s_master_stage
+k8s_master_prod
+
+[k8s_minion:children]
+k8s_node_stage
+k8s_node_prod
+
+[k8s_master_stage]
+c00test01 ansible_host=10.10.12.101
+
+[k8s_master_prod]
+c00prod01 ansible_host=10.11.12.101
+
+[k8s_node_stage]
+c00test01 ansible_host=10.10.12.101
+c00test02 ansible_host=10.10.12.102
+
+[k8s_node_prod]
+c00prod01 ansible_host=10.11.12.101
+c00prod02 ansible_host=10.11.12.102

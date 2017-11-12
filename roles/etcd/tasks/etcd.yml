@@ -1,0 +1,20 @@
+---
+
+- name: Install etcd
+  yum:
+    name: etcd-{{ etcd_version }}
+    state: present
+
+- name: Configure etcd
+  template:
+    src: etcd.conf.j2
+    dest: /etc/etcd/etcd.conf
+
+- name: Configure init.script
+  copy:
+    src: etc.service
+    dest: /usr/lib/systemd/system/etcd.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: reload systemd

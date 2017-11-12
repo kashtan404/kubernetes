@@ -1,0 +1,59 @@
+---
+
+- name: Create kubernetes script directory
+  file:
+    path: "{{ kube_script_dir }}"
+    state: directory
+    owner: root
+    group: root
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  run_once: true
+
+- name: Copy the token gen script
+  copy:
+    src: kube-gen-token.sh
+    dest: "{{ kube_script_dir }}"
+    mode: u+x
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  run_once: true
+
+- name: Generate tokens for master components
+  command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
+  environment:
+    TOKEN_DIR: "{{ kube_token_dir }}"
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  run_once: true
+  with_nested:
+    - [ "system:controller_manager", "system:scheduler", "system:kubectl" ]
+    - "{{ groups[k8s_hostgroup] }}"
+  register: gentoken_master
+  changed_when: "'Added' in gentoken_master.stdout"
+  notify:
+    - restart daemons
+
+- name: Generate tokens for node components
+  command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item[0] }}-{{ item[1] }}"
+  environment:
+    TOKEN_DIR: "{{ kube_token_dir }}"
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  run_once: true
+  with_nested:
+    - [ 'system:kubelet', 'system:proxy' ]
+    - "{{ groups[k8s_hostgroup_node] }}"
+  register: gentoken_node
+  changed_when: "'Added' in gentoken_node.stdout"
+  notify:
+    - restart daemons
+
+- name: Generate tokens for master services
+  command: "{{ kube_script_dir }}/kube-gen-token.sh {{ item }}"
+  environment:
+    TOKEN_DIR: "{{ kube_token_dir }}"
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  run_once: true
+  with_items:
+    - "system:dns"
+  register: gentoken_services
+  changed_when: "'Added' in gentoken_services.stdout"
+  notify:
+    - restart daemons

@@ -1,0 +1,64 @@
+Role Name
+=========
+
+kubernetes-node
+
+Устанавливает миньенов kubernetes.
+
+Role Variables
+--------------
+
+	kube_rpm_url_base: "https://kojipkgs.fedoraproject.org/packages/kubernetes/1.8.1/1.fc28/x86_64/"
+	kube_rpm_url_sufix: "1.8.1-1.fc28.x86_64.rpm"
+
+	kube_master_api_port: 6443
+	kube_service_addresses: "172.30.0.0/16"
+
+	kube_config_dir: /etc/kubernetes
+	kube_cert_dir: "{{ kube_config_dir }}/certs"
+	kube_manifest_dir: "{{ kube_config_dir }}/manifests"
+	kube_addons_dir: "{{ kube_config_dir }}/addons"
+
+	cluster_name: 'cluster.lan'
+	dns_domain: "{{ cluster_name }}"
+	dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(10)|ipaddr('address') }}"
+
+	container: false
+	testing: true
+
+	kubelet_options:
+	  - "--register-node=true"
+	  - "--tls-cert-file=/etc/kubernetes/certs/apiserver-kubelet-client.crt"
+	  - "--tls-private-key-file=/etc/kubernetes/certs/apiserver-kubelet-client.key"
+	  - "--require-kubeconfig=true"
+	  - "--kubeconfig={{ kube_config_dir }}/kubelet.kubeconfig"
+	  - "--pod-manifest-path={{ kube_manifest_dir }}"
+	  - "--cgroup-driver=systemd"
+	  - "--allow-privileged=true"
+	  - "--cluster-domain={{ dns_domain }}"
+	  - "--authorization-mode=Webhook"
+	  - "--fail-swap-on=false"
+	  - "--cluster-dns={{ dns_server }}"
+
+	kubenode_master_option:
+	  - "--register-with-taints=node-role.kubernetes.io/master=:NoSchedule"
+	  - "--node-labels=\\\"node-role.kubernetes.io/master=\\\""
+
+	kube_proxy_options:
+	  - "--kubeconfig={{ kube_config_dir }}/proxy.kubeconfig --cluster-cidr={{ kube_service_addresses }}"
+
+	kube_proxy_additional_options: []
+
+Example Playbook
+----------------
+
+    - hosts: k8s_node
+      roles:
+		 - { role: flannel, container: false }
+		 - { role: docker, container: false }
+		 - k8s-node
+
+Author Information
+------------------
+
+al.kashtan.ex@gmail.com

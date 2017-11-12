@@ -1,0 +1,19 @@
+---
+
+- name: Disable firewalld
+  service:
+    name: firewalld
+    state: stopped
+    enabled: no
+  when: not container
+
+- name: Disable selinux
+  selinux:
+    state: disabled
+  when: not container
+  changed_when: False
+
+- name: Install epel
+  yum:
+    name: epel-release
+    state: present

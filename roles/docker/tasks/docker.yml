@@ -1,0 +1,13 @@
+---
+
+- name: Install packages
+  yum:
+    name: "docker-{{ docker_version }}"
+    state: present
+    update_cache: true
+
+- name: Configure docker logging
+  template:
+    src: docker.j2
+    dest: /etc/sysconfig/docker
+  notify: restart docker

@@ -1,0 +1,20 @@
+---
+
+- include: prepare.yml
+
+- include: etcd-certs.yml
+  when: not container
+
+- include: config.yml
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  when: not container
+
+- include: flannel.yml
+
+- name: Start flannel
+  service:
+    name: flanneld
+    state: started
+    enabled: yes
+  when: not container
+  notify: restart docker

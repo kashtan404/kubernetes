@@ -1,0 +1,28 @@
+---
+
+- name: Slurp known_tokens.csv from first master
+  slurp:
+    src: "{{ kube_token_dir }}/known_tokens.csv"
+  register: known_tokens
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+  run_once: true
+
+- name: Copy known_tokens.csv to other masters
+  copy:
+    content: "{{ known_tokens.content|b64decode }}"
+    dest: "{{ kube_token_dir }}/known_tokens.csv"
+  when: inventory_hostname != groups[k8s_hostgroup][0]
+  notify:
+    - restart daemons
+
+- name: Copy token files to other masters
+  copy:
+    content: "{{ item.stdout }}"
+    dest: "{{ kube_token_dir }}/{{ item.cmd[1] }}.token"
+  when: inventory_hostname != groups[k8s_hostgroup][0]
+  with_items:
+    - "{{ gentoken_master.results }}"
+    - "{{ gentoken_node.results }}"
+    - "{{ gentoken_services.results }}"
+  notify:
+    - restart daemons

@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  auth: {{ kube_ingress_htpasswd_slurp.content }}
+kind: Secret
+metadata:
+  name: basic-auth
+  namespace: kube-system
+type: Opaque

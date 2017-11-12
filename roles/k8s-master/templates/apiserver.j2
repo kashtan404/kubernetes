@@ -1,0 +1,26 @@
+###
+# kubernetes system config
+#
+# The following values are used to configure the kube-apiserver
+#
+
+# The address on the local server to listen to.
+KUBE_API_ADDRESS="--bind-address={{ kube_apiserver_bind_address }}"
+
+# The port on the local server to listen on.
+KUBE_API_PORT="--secure-port={{ kube_master_api_port }}"
+
+# Port minions listen on
+# KUBELET_PORT="--kubelet-port=10250"
+
+# Comma separated list of nodes in the etcd cluster
+KUBE_ETCD_SERVERS="--etcd-servers={% for node in groups[k8s_hostgroup] %}https://{{ node }}:{{ etcd_client_port }}{% if not loop.last %},{% endif %}{% endfor %} --etcd-cafile={{ apiserver_etcd_ca_file }} --etcd-certfile={{ apiserver_etcd_cert_file }} --etcd-keyfile={{ apiserver_etcd_key_file }}"
+
+# Address range to use for services
+KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range={{ kube_service_addresses }}"
+
+# default admission control policies
+KUBE_ADMISSION_CONTROL="--admission-control={{ admission_controllers }}"
+
+# Add your own!
+KUBE_API_ARGS="{{ kube_apiserver_options|join(' ') }} {{ kube_apiserver_additional_options|join(' ') }}"

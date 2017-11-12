@@ -1,0 +1,17 @@
+---
+
+- name: Check if already installed
+  stat:
+    path: /usr/lib/systemd/system/kube-apiserver.service
+  register: kube_installed
+
+- name: Install kubernetes distribution rpms
+  yum:
+    name: "{{ kube_rpm_url_base }}/{{ item }}-{{ kube_rpm_url_sufix }}"
+    state: present
+  with_items:
+    - kubernetes
+    - kubernetes-master
+    - kubernetes-client
+    - kubernetes-node
+  when: not kube_installed.stat.exists

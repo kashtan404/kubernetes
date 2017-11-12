@@ -1,0 +1,57 @@
+---
+
+- include: prepare.yml
+
+- include: apiserver.yml
+
+- name: Set cert node ips
+  set_fact:
+    kube_cert_ip: "{{ kube_cert_ip }}"
+
+- include: gen-certs.yml
+  when: inventory_hostname == groups[k8s_hostgroup][0]
+
+- include: get-certs.yml
+
+- include: copy-etcd-certs.yml
+
+- include: configure-apiserver.yml
+
+- name: Copy basic.cnf
+  copy:
+    src: basic.cnf
+    dest: /etc/kubernetes/certs/basic.cnf
+
+- name: Start and enable service apiserver
+  service:
+    name: kube-apiserver
+    state: started
+    enabled: yes
+
+- include: gen-tokens.yml
+  when: inventory_hostname == groups[k8s_hostgroup][0]
+
+- include: get-tokens.yml
+
+- include: copy-tokens.yml
+
+- include: configure-controller-manager.yml
+
+- name: Start and enable service controller-manager
+  service:
+    name: kube-controller-manager
+    state: started
+    enabled: yes
+
+- include: configure-scheduler.yml
+
+- name: Start and enable service scheduler
+  service:
+    name: kube-scheduler
+    state: started
+    enabled: yes
+
+- include: configure-kubectl.yml
+
+- include: configure-kubeaddons.yml
+  when: inventory_hostname == groups[k8s_hostgroup][0]

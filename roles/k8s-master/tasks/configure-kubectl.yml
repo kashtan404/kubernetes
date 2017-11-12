@@ -1,0 +1,43 @@
+---
+
+- name: Slurp kube CA certificate
+  slurp:
+    src: "{{ kube_cert_dir }}/ca.crt"
+  register: kube_ca_slurp
+  run_once: true
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+
+- name: Slurp kube client certificate
+  slurp:
+    src: "{{ kube_cert_dir }}/kubecfg.crt"
+  register: kube_clientcrt_slurp
+  run_once: true
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+
+- name: Slurp kube client key
+  slurp:
+    src: "{{ kube_cert_dir }}/kubecfg.key"
+  register: kube_clientkey_slurp
+  run_once: true
+  delegate_to: "{{ groups[k8s_hostgroup][0] }}"
+
+- name: Write the kubecfg (auth) file for kubectl
+  template:
+    src: kubectl.kubeconfig.j2
+    dest: "{{ kube_config_dir }}/kubectl.kubeconfig"
+
+- name: Make sure kube root dir exist
+  file:
+   state: directory
+   path: "/root/.kube"
+   mode: 0600
+   owner: root
+   group: root
+
+- name: Write the kubecfg (auth) file for root
+  template:
+    src: kubectl.kubeconfig.j2
+    dest: "/root/.kube/config"
+    mode: 0600
+    owner: root
+    group: root
